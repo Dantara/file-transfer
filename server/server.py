@@ -1,6 +1,9 @@
 import socket
 import tqdm
 import os
+import operator
+from functools import reduce
+
 
 # device's IP address
 SERVER_HOST = "0.0.0.0"
@@ -9,6 +12,8 @@ SERVER_PORT = 5001
 # receive 4096 bytes each time
 BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
+
+RECEIVE_FOLDER = "received"
 
 # create the server socket
 # TCP socket
@@ -23,6 +28,34 @@ s.bind((SERVER_HOST, SERVER_PORT))
 s.listen(5)
 print(f"[*] Listening as {SERVER_HOST}:{SERVER_PORT}")
 
+def is_file_exist(filename):
+    return os.path.isfile(f"{RECEIVE_FOLDER}/{filename}")
+
+def add_copy_suffix(filename, n):
+    components = filename.split(".")
+
+    if(len(components) == 1):
+        return f"{filename}_copy{n}"
+
+    head, *tail = components
+
+    tail = reduce(operator.add, tail)
+
+    return f"{head}_copy{n}.{tail}"
+
+def get_valid_filename(filename):
+    if(not is_file_exist(filename)):
+        return filename
+
+    n = 1
+
+    while(is_file_exist(add_copy_suffix(filename, n))):
+        n += 1
+
+    return add_copy_suffix(filename, n)
+
+
+
 while(True):
     # accept connection if there is any
     client_socket, address = s.accept()
@@ -35,7 +68,9 @@ while(True):
     filename, filesize = received.split(SEPARATOR)
     # remove absolute path if there is
     filename = os.path.basename(filename)
-    filename_path = f"transmitions/{filename}"
+    filename = get_valid_filename(filename)
+
+    file_path = f"{RECEIVE_FOLDER}/{filename}"
 
     # convert to integer
     filesize = int(filesize)
@@ -43,7 +78,7 @@ while(True):
     # start receiving the file from the socket
     # and writing to the file stream
     progress = tqdm.tqdm(range(filesize), f"[*] Receiving {filename}", unit="B", unit_scale=True, unit_divisor=1024, leave=False)
-    with open(filename_path, "wb") as f:
+    with open(file_path, "wb") as f:
         for _ in progress:
             # read 1024 bytes from the socket (receive)
             bytes_read = client_socket.recv(BUFFER_SIZE)
