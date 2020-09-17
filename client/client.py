@@ -24,7 +24,7 @@ print("[+] Connected.")
 s.send(f"{filename}{SEPARATOR}{filesize}".encode())
 
 # start sending the file
-progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+progress = tqdm.tqdm(range(filesize), f"[*] Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024, leave=False)
 with open(filename, "rb") as f:
     for _ in progress:
         # read the bytes from the file
@@ -38,4 +38,6 @@ with open(filename, "rb") as f:
         # update the progress bar
         progress.update(len(bytes_read))
 # close the socket
+
+print(f"[+] File {filename} was sent.")
 s.close()
