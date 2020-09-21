@@ -1,15 +1,12 @@
 import socket
-import tqdm
+import sys
 import os
 import operator
-from functools import reduce
 from threading import Thread
 
-# device's IP address
 SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 5001
+DEFAULT_PORT = 4000
 
-# receive 4096 bytes each time
 BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
 
@@ -50,30 +47,21 @@ class ClientListener(Thread):
     def run(self):
         received = self.sock.recv(BUFFER_SIZE).decode()
         filename, filesize = received.split(SEPARATOR)
-        # remove absolute path if there is
         filename = os.path.basename(filename)
         filename = self._get_valid_filename(filename)
 
         file_path = f"{RECEIVE_FOLDER}/{filename}"
 
-        # convert to integer
         filesize = int(filesize)
 
-        # start receiving the file from the socket
-        # and writing to the file stream
-        progress = tqdm.tqdm(range(filesize), f"[*] Receiving {filename}", unit="B", unit_scale=True, unit_divisor=1024, leave=False)
         with open(file_path, "wb") as f:
-            for _ in progress:
-                # read 1024 bytes from the socket (receive)
+            while(True):
                 bytes_read = self.sock.recv(BUFFER_SIZE)
+
                 if not bytes_read:
-                    # nothing is received
-                    # file transmitting is done
                     break
-                # write to the file the bytes we just received
+
                 f.write(bytes_read)
-                # update the progress bar
-                progress.update(len(bytes_read))
 
             print(f"[+] File received: {filename}")
             self._close()
@@ -83,7 +71,9 @@ class ClientListener(Thread):
         print(f"[+] {self.addr[0]}:{self.addr[1]} is disconnected.")
 
 
-def main():
+def main(argv):
+    SERVER_PORT = int(argv[0]) if len(argv) == 1 else DEFAULT_PORT
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -101,4 +91,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
